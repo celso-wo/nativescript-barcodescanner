@@ -1,6 +1,6 @@
 "use strict";
 var appModule = require("application");
-var camera = require("camera");
+var camera = require("nativescript-camera");
 var utils = require("utils/utils");
 var SCANNER_REQUEST_CODE = 444;
 var _onScanReceivedCallback = undefined;
@@ -154,10 +154,9 @@ var BarcodeScanner = (function () {
                     self.broadcastManager.registerReceiver(_onScanReceivedCallback, new android.content.IntentFilter("bulk-barcode-result"));
                 }
                 if (intent.resolveActivity(com.tns.NativeScriptApplication.getInstance().getPackageManager()) !== null) {
-                    var previousResult_1 = appModule.android.onActivityResult;
-                    appModule.android.onActivityResult = function (requestCode, resultCode, data) {
-                        appModule.android.onActivityResult = previousResult_1;
-                        if (requestCode === SCANNER_REQUEST_CODE) {
+                    var activityResultCallback = function (data) {
+                        // appModule.android.onActivityResult = previousResult_1;
+                        if (data.requestCode === SCANNER_REQUEST_CODE) {
                             if (isContinuous) {
                                 if (_onScanReceivedCallback) {
                                     self.broadcastManager.unregisterReceiver(_onScanReceivedCallback);
@@ -165,9 +164,9 @@ var BarcodeScanner = (function () {
                                 }
                             }
                             else {
-                                if (resultCode === android.app.Activity.RESULT_OK) {
-                                    var format = data.getStringExtra(com.google.zxing.client.android.Intents.Scan.RESULT_FORMAT);
-                                    var text = data.getStringExtra(com.google.zxing.client.android.Intents.Scan.RESULT);
+                                if (data.resultCode === android.app.Activity.RESULT_OK) {
+                                    var format = data.intent.getStringExtra(com.google.zxing.client.android.Intents.Scan.RESULT_FORMAT);
+                                    var text = data.intent.getStringExtra(com.google.zxing.client.android.Intents.Scan.RESULT);
                                     resolve({
                                         format: format,
                                         text: text
@@ -177,8 +176,12 @@ var BarcodeScanner = (function () {
                                     reject("Scan aborted");
                                 }
                             }
+
+                            appModule.android.off("activityResult", activityResultCallback);
                         }
                     };
+
+                    appModule.android.on("activityResult", activityResultCallback);
                     appModule.android.foregroundActivity.startActivityForResult(intent, SCANNER_REQUEST_CODE);
                     if (isContinuous) {
                         resolve();
